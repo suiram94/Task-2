@@ -1,0 +1,113 @@
+---
+title: "Task_2_Marius_ihle_Arnesen"
+author: "marius"
+date: "2 10 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(zoo)
+```
+
+```{r}
+# Henter inn URL og lager en vektor
+url <- "https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.01.2019&datoTil=25.09.2019&id_region=100&id_fylke=-+-+-&id_niva1=2&id_bransje1=0"
+
+nettside <- read_html(url)
+nettside
+
+```
+
+```{r}
+# Henter nå ut nodene, samt at jeg lager og "renser" de 3 data settene. 
+fylke_df <- html_node(nettside, "td td:nth-child(2) strong")
+fylke_tekst <- html_text(fylke_df)
+fylke_tekst <- gsub("\n","", fylke_tekst)
+fylke_tekst <- gsub(" ","",fylke_tekst)
+head(fylke_tekst)
+
+fylke_navn <- data.frame(fylke_tekst)
+fylke_navn <- rename(fylke_navn, "County"= "fylke_tekst")
+fylke_navn <- as.factor(fylke_navn)
+
+nyttfirma_df <- html_node(nettside, "td td:nth-child(2) p")
+nyttfirma_tekst <- html_text(nyttfirma_df)
+nyttfirma_tekst <- gsub("\n","", nyttfirma_tekst)
+nyttfirma_tekst <- gsub(" ","", nyttfirma_tekst)
+head(nyttfirma_tekst)
+
+firma_navn <- data.frame(nyttfirma_tekst)
+firma_navn <- rename(firma_navn, "Firm name"= "nyttfirma_tekst")
+firma_navn <- firma_navn[-1,]
+firma_navn <- as.factor(firma_navn)
+firma_navn <- unique(firma_navn)
+
+dato_df <- html_node(nettside, "td:nth-child(6) p")
+dato_tekst <- html_text(dato_df)
+dato_tekst <- as.yearmon(dato_tekst, "%d,%m,%Y" , "%M")
+head(dato_tekst)
+dato_navn <- data.frame(dato_tekst)
+dato_navn <- dato_navn[-1, ]
+
+```
+
+
+
+```{r}
+# Jeg velger å lage et "datasenter" slik at jeg enkelt kan hente ut informasjon om hvert datasett. (Idee fra medstudent kristian bjerke.)
+alldata <- data.frame(firma_navn, dato_navn)
+alldata <- rename(alldata, "Firm Name" = "firma_navn", "Date" = "dato_navn")
+
+Nordland <- data.frame(alldata$`Firm Name`[1:1052], alldata$Date[1:1052])
+Nordland <- rename(Nordland, "Firm Name" = "alldata..Firm.Name..1.1052.", "Date"
+                   = "alldata.Date.1.1052.")
+
+Troms <- data.frame(alldata$`Firm Name`[1053:1804], alldata$Date[1053:1804])
+Troms <- Troms[-1, ]
+Troms <- rename(Troms, "Firm Name" = "alldata..Firm.Name..1053.1804." ,
+                "Date" = "alldata.Date.1053.1804.")
+
+Finnmark <- data.frame(alldata$`Firm Name`[1805:2216], alldata$Date[1805:2216])
+Finnmark <- Finnmark [-1, ]
+Finnmark <- rename(Finnmark, "Firm Name" = "alldata..Firm.Name..1805.2216." ,
+                   "Date" = "alldata.Date.1805.2216.")
+
+HeleFylket <- rbind.data.frame(Nordland,Troms,Finnmark)
+
+```
+
+```{r}
+# Lager så grafer for hvert enkelt fylke. 
+Nordland$Date <- as.Date(Nordland$Date)
+
+NordlandGraf <- ggplot(Nordland, aes(x = Date)) + geom_bar() + 
+  labs(x = "Date", y = "Numbers of firms") + ggtitle("Antall firmaer pr. maned i Nordlad") + theme(plot.title = element_text(hjust = 0.5))
+
+NordlandGraf
+
+Troms$Date <- as.Date(Troms$Date)
+
+TromsGraf <- ggplot(Troms, aes(x = Date)) + geom_bar() + labs(x="Date", y="Numbers of firms") + ggtitle("antall firmaer pr. maned i Troms") + theme(plot.title = element_text(hjust = 0.5))
+
+TromsGraf
+
+Finnmark$Date <- as.Date(Finnmark$Date)
+
+FinnmarkGraf <- ggplot(Finnmark, aes(x=Date)) + geom_bar() + labs(x="Date", y="Numbers of firms") + ggtitle("antall firmaer pr. maned i Finnmark") + theme(plot.title = element_text(hjust = 0.5))
+
+FinnmarkGraf
+
+```
+
+
+```{r}
+
+```
+
